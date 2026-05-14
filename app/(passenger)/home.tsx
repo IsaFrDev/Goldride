@@ -696,7 +696,6 @@ export default function PassengerHomeScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
         initialRegion={location ? {
           latitude: location.coords.latitude, longitude: location.coords.longitude,
           latitudeDelta: 0.02, longitudeDelta: 0.02
