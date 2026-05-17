@@ -133,24 +133,55 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {/* Become a Driver Button for existing passengers */}
-      {isAuthenticated && user?.role === 'passenger' && (
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={styles.driverPromoBtn} 
-            onPress={() => {
-              setOnboardingRole('driver');
-              router.push('/(auth)/role-select');
-            }}
-          >
-            <Ionicons name="car-sport" size={24} color="#FFB800" />
-            <View>
-              <Text style={styles.driverPromoTitle}>{t('profile.become_driver')}</Text>
-              <Text style={styles.driverPromoSub}>{t('profile.earn_with_us')}</Text>
+      {/* Become a Driver or Switch to Driver Button */}
+      {isAuthenticated && (
+        user?.has_driver_profile ? (
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={[styles.driverPromoBtn, { borderColor: '#FFB800', borderWidth: 1 }]} 
+              onPress={async () => {
+                try {
+                  setUpdating(true);
+                  const { authAPI } = await import('../../services/api');
+                  const resp = await authAPI.updateProfile({ role: 'driver' });
+                  setUser(resp.data);
+                  router.replace('/(driver)/home');
+                } catch (e) {
+                  Alert.alert("Xato", "Haydovchi rejimiga o'tishda xatolik yuz berdi.");
+                } finally {
+                  setUpdating(false);
+                }
+              }}
+              disabled={updating}
+            >
+              <Ionicons name="car-sport" size={24} color="#FFB800" />
+              <View>
+                <Text style={[styles.driverPromoTitle, { color: '#FFB800' }]}>Haydovchi rejimiga o'tish</Text>
+                <Text style={styles.driverPromoSub}>Taksi haydab daromad olish</Text>
+              </View>
+              {updating ? <ActivityIndicator size="small" color="#FFB800" style={{ marginLeft: 'auto' }} /> : <Ionicons name="arrow-forward" size={20} color="#FFB800" style={{ marginLeft: 'auto' }} />}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          user?.role === 'passenger' && (
+            <View style={styles.section}>
+              <TouchableOpacity 
+                style={styles.driverPromoBtn} 
+                onPress={() => {
+                  setOnboardingRole('driver');
+                  router.push('/(auth)/role-select');
+                }}
+              >
+                <Ionicons name="car-sport" size={24} color="#FFB800" />
+                <View>
+                  <Text style={styles.driverPromoTitle}>{t('profile.become_driver')}</Text>
+                  <Text style={styles.driverPromoSub}>{t('profile.earn_with_us')}</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={20} color="#FFB800" style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
             </View>
-            <Ionicons name="arrow-forward" size={20} color="#FFB800" style={{ marginLeft: 'auto' }} />
-          </TouchableOpacity>
-        </View>
+          )
+        )
       )}
 
       {/* Language Selection */}

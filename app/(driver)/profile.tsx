@@ -13,6 +13,24 @@ export default function DriverProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [tgUsername, setTgUsername] = useState(user?.telegram_username || '');
+  const [switching, setSwitching] = useState(false);
+
+  const handleSwitchToPassenger = async () => {
+    try {
+      setSwitching(true);
+      if (isOnline) {
+        await authAPI.toggleDriverStatus({ is_online: false });
+        setIsOnline(false);
+      }
+      const resp = await authAPI.updateProfile({ role: 'passenger' });
+      setUser(resp.data);
+      router.replace('/(passenger)/home');
+    } catch (e) {
+      Alert.alert("Xato", "Yo'lovchi rejimiga o'tishda xatolik yuz berdi.");
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   const toggleOnline = async () => {
     try {
@@ -171,6 +189,19 @@ export default function DriverProfileScreen() {
         </View>
       </View>
 
+      {/* Switch to Passenger Mode Button */}
+      <View style={styles.section}>
+        <TouchableOpacity 
+          style={styles.switchBtn} 
+          onPress={handleSwitchToPassenger}
+          disabled={switching}
+        >
+          <Ionicons name="people-outline" size={20} color="#FFB800" />
+          <Text style={styles.switchText}>Yo'lovchi rejimiga o'tish</Text>
+          {switching && <ActivityIndicator size="small" color="#FFB800" style={{ marginLeft: 8 }} />}
+        </TouchableOpacity>
+      </View>
+
       {/* Logout */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={20} color="#E53935" />
@@ -239,4 +270,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212', borderWidth: 1, borderColor: '#442222',
   },
   logoutText: { fontSize: 16, fontWeight: '700', color: '#FF5252' },
+  switchBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 16, borderRadius: 14,
+    backgroundColor: '#1A160A', borderWidth: 1, borderColor: '#FFB800',
+  },
+  switchText: { fontSize: 16, fontWeight: '700', color: '#FFB800' },
 });
