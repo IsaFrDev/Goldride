@@ -131,6 +131,7 @@ export default function PassengerHomeScreen() {
 
   // Mandatory Agreement Modal (for existing users)
   const [showAgreementModal, setShowAgreementModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // 1. Permissions & Initial Location
   useEffect(() => {
