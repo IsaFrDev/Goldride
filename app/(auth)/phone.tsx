@@ -16,48 +16,75 @@ type LoginMethod = 'phone' | 'email' | 'telegram';
 export default function PhoneScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const login = useAuthStore(state => state.login);
-  const [step, setStep] = useState<'phone' | 'email'>(method === 'phone' ? 'phone' : 'email');
+  const { login, onboardingRole, setOnboardingRole } = useAuthStore();
+  
+  const [method, setMethod] = useState<LoginMethod>('phone');
+  const [step, setStep] = useState<'phone' | 'email'>('phone');
+  const [phone, setPhone] = useState('+998');
+  const [email, setEmail] = useState('');
+  const [chatId, setChatId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
-  const handleNextStep = () => {
-    if (step === 'phone') {
-        const identifier = getRawPhone();
-        if (identifier.length !== 13) {
-          Alert.alert(t('common.error'), "Telefon raqamini to'liq kiriting");
-          return;
-        }
-        setStep('email');
-    } else {
-        handleSendOTP();
+  const formatPhone = (text: string) => {
+    let cleaned = text.replace(/\D/g, '');
+    if (!cleaned.startsWith('998')) {
+      cleaned = '998' + cleaned;
     }
+    cleaned = cleaned.substring(0, 12);
+    
+    let formatted = '+998';
+    if (cleaned.length > 3) {
+      formatted += ' ' + cleaned.substring(3, 5);
+    }
+    if (cleaned.length > 5) {
+      formatted += ' ' + cleaned.substring(5, 8);
+    }
+    if (cleaned.length > 8) {
+      formatted += ' ' + cleaned.substring(8, 10);
+    }
+    if (cleaned.length > 10) {
+      formatted += ' ' + cleaned.substring(10, 12);
+    }
+    return formatted;
   };
 
-  const handleSendOTP = async () => {
-    let identifier = email.trim();
-    if (!identifier.includes('@')) {
-        Alert.alert(t('common.error'), "Email manzilini to'g'ri kiriting");
-        return;
+  const getRawPhone = () => {
+    return '+' + phone.replace(/\D/g, '');
+  };
+
+  const handleNextStep = async () => {
+    const phoneIdentifier = getRawPhone();
+    if (phoneIdentifier.length !== 13) {
+      Alert.alert("Xato", "Telefon raqamini to'liq kiriting");
+      return;
     }
 
     setLoading(true);
     try {
-      const phoneIdentifier = getRawPhone();
-      // Send OTP to Email, providing the Phone for linking
-      await authAPI.sendOTP(phoneIdentifier, identifier);
+      const { referralCode } = useAuthStore.getState();
+      const response = await authAPI.loginDirect(phoneIdentifier, referralCode || undefined);
+      const { access, refresh, user, is_new_user } = response.data;
       
-      router.push({
-        pathname: '/(auth)/otp',
-        params: { 
-            identifier, // email
-            phone: phoneIdentifier,
-            method: 'email',
-            type: 'email'
-        }
-      });
+      login(access, refresh, user);
+
+      if (is_new_user || !user.first_name || onboardingRole === 'driver') {
+        router.replace({
+            pathname: '/(auth)/role-select',
+            params: { force_role: onboardingRole || undefined }
+        });
+        setOnboardingRole(null);
+      } else if (user.role === 'driver' && user.has_driver_profile) {
+        router.replace('/(driver)/home');
+      } else if (user.role === 'passenger') {
+        router.replace('/(passenger)/home');
+      } else {
+        router.replace('/(auth)/role-select');
+      }
     } catch (error: any) {
-      console.error('[Auth] Login error:', error);
-      const msg = error.response?.data?.detail || error.message || "Xatolik yuz berdi";
-      Alert.alert(t('common.error'), msg);
+      console.error('[Auth] Direct Login error:', error);
+      const msg = error.response?.data?.detail || error.message || "Tizimga kirishda xatolik yuz berdi";
+      Alert.alert("Xatolik", msg);
     } finally {
       setLoading(false);
     }
@@ -105,7 +132,7 @@ export default function PhoneScreen() {
               onPress={() => { setMethod('phone'); setStep('phone'); }}
             >
               <Ionicons name="call" size={18} color={method !== 'telegram' ? '#000' : '#888'} />
-              <Text style={[styles.tabText, method !== 'telegram' && styles.activeTabText]}>Telefon / Email</Text>
+              <Text style={[styles.tabText, method !== 'telegram' && styles.activeTabText]}>Telefon raqam</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.tab, method === 'telegram' && styles.activeTab]}
@@ -118,39 +145,20 @@ export default function PhoneScreen() {
 
           {method !== 'telegram' ? (
             <View>
-              {step === 'phone' ? (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.flag}>🇺🇿</Text>
-                  <TextInput
-                    ref={inputRef}
-                    style={styles.input}
-                    value={phone}
-                    onChangeText={(text) => setPhone(formatPhone(text))}
-                    keyboardType="phone-pad"
-                    placeholder="+998 00 000 00 00"
-                    placeholderTextColor="#666"
-                    maxLength={17}
-                    autoFocus
-                  />
-                </View>
-              ) : (
-                <View>
-                  <Text style={styles.inputLabel}>Endi email manzilingizni kiriting:</Text>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="mail-outline" size={20} color="#666" style={{ marginRight: 10 }} />
-                    <TextInput
-                      style={styles.input}
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      placeholder="example@mail.com"
-                      placeholderTextColor="#666"
-                      autoCapitalize="none"
-                      autoFocus
-                    />
-                  </View>
-                </View>
-              )}
+              <View style={styles.inputContainer}>
+                <Text style={styles.flag}>🇺🇿</Text>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.input}
+                  value={phone}
+                  onChangeText={(text) => setPhone(formatPhone(text))}
+                  keyboardType="phone-pad"
+                  placeholder="+998 00 000 00 00"
+                  placeholderTextColor="#666"
+                  maxLength={17}
+                  autoFocus
+                />
+              </View>
               
               <TouchableOpacity
                 style={[styles.sendBtn, loading && styles.sendBtnDisabled]}
@@ -158,7 +166,7 @@ export default function PhoneScreen() {
                 disabled={loading}
               >
                 <Text style={styles.sendBtnText}>
-                  {loading ? "Yuborilmoqda..." : step === 'phone' ? "Keyingisi" : "Emailga kod yuborish"}
+                  {loading ? "Kirilmoqda..." : "Tizimga kirish"}
                 </Text>
                 {!loading && <Ionicons name="chevron-forward" size={20} color="#000" />}
               </TouchableOpacity>
