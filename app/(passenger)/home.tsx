@@ -81,7 +81,7 @@ const TASHKENT = {
 };
 
 export default function PassengerHomeScreen() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, setUser } = useAuthStore();
   const ride = useRideStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
